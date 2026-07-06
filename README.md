@@ -56,6 +56,8 @@ powershell -ExecutionPolicy Bypass -File .\run_app.ps1
 - `Dockerfile`：容器化部署。
 - `Procfile`：支援 Procfile 的平台使用。
 - `DEPLOYMENT.md`：部署步驟。
+- `GITHUB_RENDER_NEXT_STEPS.md`：GitHub + Render 上線流程。
+- `publish_github.ps1`：GitHub CLI 登入後的一鍵建立 repo / push 腳本。
 
 部署時請在平台後台設定環境變數：
 
