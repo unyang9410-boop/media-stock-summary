@@ -11,8 +11,8 @@ def test_home_screen_renders_main_layout() -> None:
     app.run()
 
     assert not app.exception
-    assert "輸入模式" in [radio.label for radio in app.radio]
-    assert "網址" in [text_input.label for text_input in app.text_input]
+    assert not app.radio
+    assert "Podcast 網址或節目連結" in [text_input.label for text_input in app.text_input]
     assert app.button[0].label == "開始分析"
     assert app.button[0].disabled is False
     assert PODCAST_LABEL == "Podcast 網址或節目連結"

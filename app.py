@@ -358,10 +358,10 @@ def _render_hero() -> None:
         """
         <div class="app-hero">
             <h1>影音總結與台股萃取</h1>
-            <p>貼上 YouTube 影片、Podcast 網址或節目連結，系統會取得逐字稿、產生繁體中文摘要，並整理逐字稿中提到的股票與八大分析面向。</p>
+            <p>貼上 Podcast 網址或節目連結，系統會解析音訊、取得逐字稿、產生繁體中文摘要，並整理逐字稿中提到的股票與八大分析面向。</p>
             <div class="feature-row">
-                <span class="feature-pill">YouTube 字幕解析</span>
                 <span class="feature-pill">Podcast 網址轉錄</span>
+                <span class="feature-pill">節目連結解析</span>
                 <span class="feature-pill">台股優先萃取</span>
                 <span class="feature-pill">八大面向分析</span>
             </div>
@@ -501,26 +501,19 @@ def main() -> None:
 
     with st.container(border=True):
         st.markdown('<div class="section-title">輸入來源</div>', unsafe_allow_html=True)
-        mode_col, url_col = st.columns((1, 2.4), gap="large")
-        with mode_col:
-            source_label = st.radio(
-                "輸入模式",
-                (YOUTUBE_LABEL, PODCAST_LABEL),
-            )
-        source_type = _source_type_from_label(source_label)
+        source_type: SourceType = "podcast"
         source_title, placeholder, source_note = _source_copy(source_type)
 
-        with url_col:
-            url = st.text_input("網址", placeholder=placeholder)
-            st.markdown(
-                f"""
-                <div class="source-note">
-                    <strong>{html.escape(source_title)}</strong><br />
-                    {html.escape(source_note)}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        url = st.text_input("Podcast 網址或節目連結", placeholder=placeholder)
+        st.markdown(
+            f"""
+            <div class="source-note">
+                <strong>{html.escape(source_title)}</strong><br />
+                {html.escape(source_note)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         submitted = st.button("開始分析", type="primary", use_container_width=True)
 
