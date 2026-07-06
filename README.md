@@ -59,6 +59,8 @@ powershell -ExecutionPolicy Bypass -File .\run_app.ps1
 - `GITHUB_RENDER_NEXT_STEPS.md`：GitHub + Render 上線流程。
 - `publish_github.ps1`：GitHub CLI 登入後的一鍵建立 repo / push 腳本。
 
+若 `gh auth status` 顯示 token invalid，請先執行 `gh auth logout -h github.com`，再執行 `gh auth login -h github.com --git-protocol https --web`。
+
 部署時請在平台後台設定環境變數：
 
 ```env

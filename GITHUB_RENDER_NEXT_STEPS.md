@@ -7,16 +7,28 @@
 在 PowerShell 執行：
 
 ```powershell
-gh auth login
+gh auth status
 ```
 
-建議選項：
+若顯示 token invalid，先清掉舊 token：
+
+```powershell
+gh auth logout -h github.com
+```
+
+再重新登入：
+
+```powershell
+gh auth login -h github.com --git-protocol https --web
+```
+
+網頁登入建議選項：
 
 - GitHub.com
 - HTTPS
 - Login with a web browser
 
-登入完成後確認：
+登入完成後再次確認：
 
 ```powershell
 gh auth status
@@ -59,4 +71,3 @@ https://你的-render網址/_stcore/health
 ```
 
 回應 HTTP 200 表示服務正常。接著打開 Render 給的公開網址測試 YouTube / Podcast 輸入流程。
-
