@@ -14,7 +14,7 @@ def test_home_screen_renders_main_layout() -> None:
     assert "輸入模式" in [radio.label for radio in app.radio]
     assert "網址" in [text_input.label for text_input in app.text_input]
     assert app.button[0].label == "開始分析"
-    assert app.button[0].disabled is True
+    assert app.button[0].disabled is False
     assert "內容分析模型" in [text_input.label for text_input in app.sidebar.text_input]
     assert "音訊轉錄模型" in [text_input.label for text_input in app.sidebar.text_input]
     assert app.warning
@@ -24,6 +24,7 @@ def test_validate_source_url() -> None:
     assert _validate_source_url("youtube", "https://www.youtube.com/watch?v=dQw4w9WgXcQ") is None
     assert _validate_source_url("youtube", "https://youtu.be/dQw4w9WgXcQ") is None
     assert _validate_source_url("podcast", "https://example.com/episode.mp3") is None
+    assert "貼上" in (_validate_source_url("youtube", "   ") or "")
     assert "完整" in (_validate_source_url("podcast", "example.com/episode.mp3") or "")
     assert "YouTube" in (_validate_source_url("youtube", "https://example.com/episode.mp3") or "")
 

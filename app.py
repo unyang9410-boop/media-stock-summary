@@ -198,6 +198,18 @@ def _inject_styles() -> None:
             border-color: #cf634e;
         }
 
+        .stButton button:disabled,
+        .stButton button[disabled],
+        .stDownloadButton button:disabled,
+        .stDownloadButton button[disabled] {
+            background: #eadfd2 !important;
+            border-color: #ded2c4 !important;
+            color: #92857a !important;
+            cursor: not-allowed !important;
+            opacity: .72 !important;
+            box-shadow: none !important;
+        }
+
         .summary-box {
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -322,7 +334,11 @@ def _source_copy(source_type: SourceType) -> tuple[str, str, str]:
 
 
 def _validate_source_url(source_type: SourceType, url: str) -> str | None:
-    parsed = urlparse(url.strip())
+    stripped_url = url.strip()
+    if not stripped_url:
+        return "請先貼上 YouTube 影片或 Podcast 音檔網址。"
+
+    parsed = urlparse(stripped_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return "請輸入完整的 http 或 https 網址。"
 
@@ -506,7 +522,7 @@ def main() -> None:
                 unsafe_allow_html=True,
             )
 
-        submitted = st.button("開始分析", type="primary", disabled=not url.strip(), use_container_width=True)
+        submitted = st.button("開始分析", type="primary", use_container_width=True)
 
     with st.sidebar:
         st.header("模型設定")
@@ -554,4 +570,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
