@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from streamlit.testing.v1 import AppTest
 
-from app import _analysis_json, _validate_source_url
+from app import PODCAST_LABEL, _analysis_json, _source_copy, _validate_source_url
 from src.models import AnalysisResult
 
 
@@ -15,6 +15,8 @@ def test_home_screen_renders_main_layout() -> None:
     assert "網址" in [text_input.label for text_input in app.text_input]
     assert app.button[0].label == "開始分析"
     assert app.button[0].disabled is False
+    assert PODCAST_LABEL == "Podcast 網址或節目連結"
+    assert "節目連結" in _source_copy("podcast")[0]
     assert "內容分析模型" in [text_input.label for text_input in app.sidebar.text_input]
     assert "音訊轉錄模型" in [text_input.label for text_input in app.sidebar.text_input]
     assert app.warning

@@ -3,7 +3,9 @@ from __future__ import annotations
 import io
 import mimetypes
 import re
-from urllib.parse import parse_qs, urlparse
+import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
 from openai import OpenAI
@@ -14,10 +16,114 @@ from src.models import SourceType, TranscriptResult
 
 YOUTUBE_LANGUAGE_PRIORITY = ("zh-Hant", "zh-TW", "zh", "zh-Hans", "en")
 DEFAULT_HTTP_TIMEOUT = 60
+AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".wav", ".ogg", ".oga", ".flac", ".webm", ".mp4")
+AUDIO_META_KEYS = {
+    "audio",
+    "og:audio",
+    "og:audio:url",
+    "og:audio:secure_url",
+    "twitter:player:stream",
+}
 
 
 class TranscriptError(RuntimeError):
     """Raised when a transcript cannot be fetched or generated."""
+
+
+class PodcastAudioLinkParser(HTMLParser):
+    def __init__(self, base_url: str) -> None:
+        super().__init__()
+        self.base_url = base_url
+        self.candidates: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = {key.lower(): value for key, value in attrs if value}
+        tag_name = tag.lower()
+
+        if tag_name == "meta":
+            meta_key = (
+                attributes.get("property")
+                or attributes.get("name")
+                or attributes.get("itemprop")
+                or ""
+            ).lower()
+            if meta_key in AUDIO_META_KEYS:
+                self._add_candidate(attributes.get("content"))
+
+        if tag_name in {"audio", "source"}:
+            self._add_candidate(attributes.get("src"))
+
+        if tag_name == "a":
+            href = attributes.get("href")
+            if href and _looks_like_audio_url(href):
+                self._add_candidate(href)
+
+        if tag_name == "link":
+            rel = attributes.get("rel", "").lower()
+            content_type = attributes.get("type", "").lower()
+            if ("enclosure" in rel or content_type.startswith("audio/")) and attributes.get("href"):
+                self._add_candidate(attributes.get("href"))
+
+    def _add_candidate(self, value: str | None) -> None:
+        if not value:
+            return
+        resolved = urljoin(self.base_url, value.strip())
+        if resolved and resolved not in self.candidates:
+            self.candidates.append(resolved)
+
+
+def _is_audio_content_type(content_type: str) -> bool:
+    normalized = content_type.split(";")[0].strip().lower()
+    return (
+        normalized.startswith("audio/")
+        or normalized in {"application/octet-stream", "video/mp4"}
+        or "mpeg" in normalized
+    )
+
+
+def _looks_like_audio_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return parsed.path.lower().endswith(AUDIO_EXTENSIONS)
+
+
+def _extract_audio_url_from_xml(content: bytes, base_url: str) -> str | None:
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return None
+
+    for element in root.iter():
+        tag_name = element.tag.rsplit("}", 1)[-1].lower()
+        url = element.attrib.get("url") or element.attrib.get("href")
+        content_type = element.attrib.get("type", "")
+        if not url:
+            continue
+        if tag_name in {"enclosure", "content"} and (
+            content_type.startswith("audio/") or _looks_like_audio_url(url)
+        ):
+            return urljoin(base_url, url)
+
+    return None
+
+
+def _extract_audio_url_from_html(content: bytes, base_url: str) -> str | None:
+    parser = PodcastAudioLinkParser(base_url)
+    parser.feed(content.decode("utf-8", errors="ignore"))
+    return parser.candidates[0] if parser.candidates else None
+
+
+def resolve_podcast_audio_url(url: str, content: bytes, content_type: str) -> str:
+    base_url = url
+    xml_audio_url = _extract_audio_url_from_xml(content, base_url)
+    if xml_audio_url:
+        return xml_audio_url
+
+    html_audio_url = _extract_audio_url_from_html(content, base_url)
+    if html_audio_url:
+        return html_audio_url
+
+    type_hint = f"（Content-Type: {content_type}）" if content_type else ""
+    raise TranscriptError(f"找不到可用的 Podcast 音訊連結{type_hint}。請貼上含音訊播放器的單集頁、RSS enclosure，或直接音檔 URL。")
 
 
 def parse_youtube_video_id(url: str) -> str:
@@ -77,12 +183,18 @@ def download_audio_to_memory(url: str, timeout: int = DEFAULT_HTTP_TIMEOUT) -> i
         raise TranscriptError(f"Podcast 音檔下載失敗：{exc}") from exc
 
     content_type = response.headers.get("Content-Type", "")
-    if content_type and not (
-        content_type.startswith("audio/")
-        or "octet-stream" in content_type
-        or "mpeg" in content_type
-    ):
-        raise TranscriptError(f"Podcast URL 回傳的內容不是音訊格式：{content_type}")
+    is_probably_audio = _is_audio_content_type(content_type) or (
+        not content_type and _looks_like_audio_url(url)
+    )
+    if not is_probably_audio:
+        resolved_url = resolve_podcast_audio_url(
+            getattr(response, "url", url),
+            response.content,
+            content_type,
+        )
+        if resolved_url.strip() == url.strip():
+            raise TranscriptError("Podcast 節目頁解析到原始網址，無法取得直接音訊檔。")
+        return download_audio_to_memory(resolved_url, timeout=timeout)
 
     audio_file = io.BytesIO(response.content)
     audio_file.name = _filename_from_url(url, content_type)

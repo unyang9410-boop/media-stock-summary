@@ -74,8 +74,93 @@ def test_download_audio_to_memory_success(monkeypatch: pytest.MonkeyPatch) -> No
     assert audio_file.name == "episode.mp3"
 
 
-def test_download_audio_to_memory_rejects_non_audio(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_download_audio_to_memory_accepts_audio_extension_without_content_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class FakeResponse:
+        headers = {}
+        content = b"audio-bytes"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    monkeypatch.setattr("src.transcript.requests.get", lambda *args, **kwargs: FakeResponse())
+
+    audio_file = download_audio_to_memory("https://example.com/episode.m4a")
+
+    assert audio_file.read() == b"audio-bytes"
+    assert audio_file.name == "episode.m4a"
+
+
+def test_download_audio_to_memory_resolves_html_episode_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = {
+        "https://example.com/episode": SimpleNamespace(
+            url="https://example.com/episode",
+            headers={"Content-Type": "text/html; charset=utf-8"},
+            content=b'<html><head><meta property="og:audio" content="/media/episode.mp3"></head></html>',
+            raise_for_status=lambda: None,
+        ),
+        "https://example.com/media/episode.mp3": SimpleNamespace(
+            url="https://example.com/media/episode.mp3",
+            headers={"Content-Type": "audio/mpeg"},
+            content=b"audio-from-page",
+            raise_for_status=lambda: None,
+        ),
+    }
+    calls = []
+
+    def fake_get(url: str, stream: bool, timeout: int) -> SimpleNamespace:
+        calls.append((url, stream, timeout))
+        return responses[url]
+
+    monkeypatch.setattr("src.transcript.requests.get", fake_get)
+
+    audio_file = download_audio_to_memory("https://example.com/episode")
+
+    assert [call[0] for call in calls] == [
+        "https://example.com/episode",
+        "https://example.com/media/episode.mp3",
+    ]
+    assert audio_file.read() == b"audio-from-page"
+    assert audio_file.name == "episode.mp3"
+
+
+def test_download_audio_to_memory_resolves_rss_enclosure(monkeypatch: pytest.MonkeyPatch) -> None:
+    rss = b"""
+    <rss>
+      <channel>
+        <item>
+          <enclosure url="https://cdn.example.com/show.m4a" type="audio/mp4" />
+        </item>
+      </channel>
+    </rss>
+    """
+    responses = {
+        "https://example.com/feed.xml": SimpleNamespace(
+            url="https://example.com/feed.xml",
+            headers={"Content-Type": "application/rss+xml"},
+            content=rss,
+            raise_for_status=lambda: None,
+        ),
+        "https://cdn.example.com/show.m4a": SimpleNamespace(
+            url="https://cdn.example.com/show.m4a",
+            headers={"Content-Type": "audio/mp4"},
+            content=b"rss-audio",
+            raise_for_status=lambda: None,
+        ),
+    }
+
+    monkeypatch.setattr("src.transcript.requests.get", lambda url, **kwargs: responses[url])
+
+    audio_file = download_audio_to_memory("https://example.com/feed.xml")
+
+    assert audio_file.read() == b"rss-audio"
+    assert audio_file.name == "show.m4a"
+
+
+def test_download_audio_to_memory_rejects_page_without_audio(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResponse:
+        url = "https://example.com/not-audio"
         headers = {"Content-Type": "text/html"}
         content = b"<html></html>"
 
@@ -84,7 +169,7 @@ def test_download_audio_to_memory_rejects_non_audio(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr("src.transcript.requests.get", lambda *args, **kwargs: FakeResponse())
 
-    with pytest.raises(TranscriptError, match="不是音訊格式"):
+    with pytest.raises(TranscriptError, match="找不到可用"):
         download_audio_to_memory("https://example.com/not-audio")
 
 
@@ -104,4 +189,3 @@ def test_transcribe_audio_file_uses_openai_client() -> None:
 
     assert text == "逐字稿內容"
     assert calls == {"model": "whisper-1", "file": audio_file}
-

@@ -19,7 +19,7 @@ load_dotenv()
 DEFAULT_ANALYSIS_MODEL = "gpt-4o"
 DEFAULT_TRANSCRIBE_MODEL = "whisper-1"
 YOUTUBE_LABEL = "YouTube 影片網址"
-PODCAST_LABEL = "Podcast 直接音檔網址"
+PODCAST_LABEL = "Podcast 網址或節目連結"
 
 
 def _inject_styles() -> None:
@@ -327,16 +327,16 @@ def _source_copy(source_type: SourceType) -> tuple[str, str, str]:
             "系統會讀取影片內建字幕；若影片沒有字幕，會回報明確錯誤，不會改下載影片音訊。",
         )
     return (
-        "Podcast 音檔 URL",
-        "https://example.com/episode.mp3",
-        "系統會將音訊串流讀入記憶體並送 OpenAI 轉錄。長音訊可能受平台記憶體與 API 限制影響。",
+        "Podcast 網址或節目連結",
+        "https://example.com/episode 或 https://example.com/episode.mp3",
+        "可貼上 Podcast 單集頁、RSS enclosure 或直接音檔 URL；系統會先解析音訊連結，再讀入記憶體並送 OpenAI 轉錄。",
     )
 
 
 def _validate_source_url(source_type: SourceType, url: str) -> str | None:
     stripped_url = url.strip()
     if not stripped_url:
-        return "請先貼上 YouTube 影片或 Podcast 音檔網址。"
+        return "請先貼上 YouTube 影片、Podcast 網址或節目連結。"
 
     parsed = urlparse(stripped_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -358,10 +358,10 @@ def _render_hero() -> None:
         """
         <div class="app-hero">
             <h1>影音總結與台股萃取</h1>
-            <p>貼上 YouTube 影片或 Podcast 音檔網址，系統會取得逐字稿、產生繁體中文摘要，並整理逐字稿中提到的股票與八大分析面向。</p>
+            <p>貼上 YouTube 影片、Podcast 網址或節目連結，系統會取得逐字稿、產生繁體中文摘要，並整理逐字稿中提到的股票與八大分析面向。</p>
             <div class="feature-row">
                 <span class="feature-pill">YouTube 字幕解析</span>
-                <span class="feature-pill">Podcast Whisper 轉錄</span>
+                <span class="feature-pill">Podcast 網址轉錄</span>
                 <span class="feature-pill">台股優先萃取</span>
                 <span class="feature-pill">八大面向分析</span>
             </div>

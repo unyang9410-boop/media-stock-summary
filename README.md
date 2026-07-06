@@ -1,14 +1,14 @@
 # 影音總結與台股萃取 Streamlit App
 
-這是一個 Python/Streamlit 網站，支援 YouTube 影片字幕與 Podcast 直接音檔網址，並使用 OpenAI 產生繁體中文摘要與台股優先的股票分析。
+這是一個 Python/Streamlit 網站，支援 YouTube 影片字幕與 Podcast 網址、節目連結或直接音檔網址，並使用 OpenAI 產生繁體中文摘要與台股優先的股票分析。
 
 ## 功能
 
 - YouTube 影片網址：使用 `youtube-transcript-api` 讀取內建字幕，不下載影片或音訊。
-- Podcast 音檔網址：使用 `requests` 讀取音訊 bytes，透過 `io.BytesIO` 送 OpenAI 音訊轉錄。
+- Podcast 網址或節目連結：可貼單集頁、RSS enclosure 或直接音檔 URL；系統會解析音訊連結後，用 `requests` 讀取音訊 bytes，透過 `io.BytesIO` 送 OpenAI 音訊轉錄。
 - AI 分析：使用 GPT 模型產生重點摘要、投資觀察、股票清單與八大面向分析。
 - 台股優先：股票名稱與代號辨識以台股為優先，但保留其他明確提及市場。
-- 網址驗證：YouTube 模式會檢查 `youtube.com` 或 `youtu.be`，Podcast 模式接受完整音檔 URL。
+- 網址驗證：YouTube 模式會檢查 `youtube.com` 或 `youtu.be`，Podcast 模式接受完整 Podcast 網址、節目連結或直接音檔 URL。
 - 匯出結果：分析完成後可下載 JSON，方便後續存檔或串接其他流程。
 
 ## 安裝
