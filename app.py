@@ -328,8 +328,8 @@ def _source_copy(source_type: SourceType) -> tuple[str, str, str]:
         )
     return (
         "Podcast 網址或節目連結",
-        "https://example.com/episode 或 https://example.com/episode.mp3",
-        "可貼上 Podcast 單集頁、RSS enclosure 或直接音檔 URL；系統會先解析音訊連結，再讀入記憶體並送 OpenAI 轉錄。",
+        "Apple Podcasts 節目頁、RSS 或 https://example.com/episode.mp3",
+        "可貼上 Apple Podcasts 節目/單集頁、Podcast RSS、含音訊播放器的單集頁或直接音檔 URL；系統會先解析音訊連結，再讀入記憶體並送 OpenAI 轉錄。",
     )
 
 

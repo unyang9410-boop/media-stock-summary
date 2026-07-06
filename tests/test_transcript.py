@@ -9,6 +9,7 @@ from src.transcript import (
     download_audio_to_memory,
     fetch_youtube_transcript,
     parse_youtube_video_id,
+    resolve_podcast_audio_url,
     transcribe_audio_file,
 )
 
@@ -156,6 +157,71 @@ def test_download_audio_to_memory_resolves_rss_enclosure(monkeypatch: pytest.Mon
 
     assert audio_file.read() == b"rss-audio"
     assert audio_file.name == "show.m4a"
+
+
+def test_resolve_podcast_audio_url_supports_apple_podcasts_show(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_get(url: str, **kwargs: object) -> SimpleNamespace:
+        assert url == "https://itunes.apple.com/lookup"
+        assert kwargs["params"] == {"id": "1500839292", "entity": "podcastEpisode", "limit": 20}
+
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "results": [
+                    {"kind": "podcast", "feedUrl": "https://example.com/feed.xml"},
+                    {
+                        "kind": "podcast-episode",
+                        "trackId": 1001,
+                        "episodeUrl": "https://cdn.example.com/latest.mp3",
+                    },
+                ]
+            },
+        )
+
+    monkeypatch.setattr("src.transcript.requests.get", fake_get)
+
+    audio_url = resolve_podcast_audio_url(
+        "https://podcasts.apple.com/tw/podcast/gooaye/id1500839292",
+        b"<html></html>",
+        "text/html",
+    )
+
+    assert audio_url == "https://cdn.example.com/latest.mp3"
+
+
+def test_resolve_podcast_audio_url_supports_apple_podcasts_episode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_get(url: str, **kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "results": [
+                    {
+                        "kind": "podcast-episode",
+                        "trackId": 1001,
+                        "episodeUrl": "https://cdn.example.com/latest.mp3",
+                    },
+                    {
+                        "kind": "podcast-episode",
+                        "trackId": 1002,
+                        "episodeUrl": "https://cdn.example.com/chosen.mp3",
+                    },
+                ]
+            },
+        )
+
+    monkeypatch.setattr("src.transcript.requests.get", fake_get)
+
+    audio_url = resolve_podcast_audio_url(
+        "https://podcasts.apple.com/tw/podcast/gooaye/id1500839292?i=1002",
+        b"<html></html>",
+        "text/html",
+    )
+
+    assert audio_url == "https://cdn.example.com/chosen.mp3"
 
 
 def test_download_audio_to_memory_rejects_page_without_audio(monkeypatch: pytest.MonkeyPatch) -> None:

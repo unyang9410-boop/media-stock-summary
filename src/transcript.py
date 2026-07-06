@@ -16,6 +16,7 @@ from src.models import SourceType, TranscriptResult
 
 YOUTUBE_LANGUAGE_PRIORITY = ("zh-Hant", "zh-TW", "zh", "zh-Hans", "en")
 DEFAULT_HTTP_TIMEOUT = 60
+APPLE_LOOKUP_URL = "https://itunes.apple.com/lookup"
 AUDIO_EXTENSIONS = (".mp3", ".m4a", ".aac", ".wav", ".ogg", ".oga", ".flac", ".webm", ".mp4")
 AUDIO_META_KEYS = {
     "audio",
@@ -112,7 +113,60 @@ def _extract_audio_url_from_html(content: bytes, base_url: str) -> str | None:
     return parser.candidates[0] if parser.candidates else None
 
 
-def resolve_podcast_audio_url(url: str, content: bytes, content_type: str) -> str:
+def _apple_podcast_ids(url: str) -> tuple[str | None, str | None]:
+    parsed = urlparse(url)
+    if not parsed.netloc.lower().endswith("podcasts.apple.com"):
+        return None, None
+
+    collection_match = re.search(r"/id(\d+)", parsed.path)
+    collection_id = collection_match.group(1) if collection_match else None
+    episode_id = parse_qs(parsed.query).get("i", [None])[0]
+    return collection_id, episode_id
+
+
+def _resolve_apple_podcast_audio_url(url: str, timeout: int) -> str | None:
+    collection_id, episode_id = _apple_podcast_ids(url)
+    if not collection_id:
+        return None
+
+    try:
+        response = requests.get(
+            APPLE_LOOKUP_URL,
+            params={"id": collection_id, "entity": "podcastEpisode", "limit": 20},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (ValueError, requests.RequestException) as exc:
+        raise TranscriptError(f"Apple Podcasts 連結解析失敗：{exc}") from exc
+
+    episodes = [
+        item
+        for item in payload.get("results", [])
+        if item.get("kind") == "podcast-episode" and item.get("episodeUrl")
+    ]
+    if episode_id:
+        for episode in episodes:
+            if str(episode.get("trackId")) == episode_id:
+                return str(episode["episodeUrl"])
+        raise TranscriptError("找不到這個 Apple Podcasts 單集的音訊連結。請改貼該節目的 RSS 或直接音檔 URL。")
+
+    if episodes:
+        return str(episodes[0]["episodeUrl"])
+
+    for item in payload.get("results", []):
+        feed_url = item.get("feedUrl")
+        if feed_url:
+            return str(feed_url)
+
+    raise TranscriptError("找不到這個 Apple Podcasts 節目的 RSS 或音訊連結。")
+
+
+def resolve_podcast_audio_url(url: str, content: bytes, content_type: str, timeout: int = DEFAULT_HTTP_TIMEOUT) -> str:
+    apple_audio_url = _resolve_apple_podcast_audio_url(url, timeout)
+    if apple_audio_url:
+        return apple_audio_url
+
     base_url = url
     xml_audio_url = _extract_audio_url_from_xml(content, base_url)
     if xml_audio_url:
@@ -191,6 +245,7 @@ def download_audio_to_memory(url: str, timeout: int = DEFAULT_HTTP_TIMEOUT) -> i
             getattr(response, "url", url),
             response.content,
             content_type,
+            timeout=timeout,
         )
         if resolved_url.strip() == url.strip():
             raise TranscriptError("Podcast 節目頁解析到原始網址，無法取得直接音訊檔。")

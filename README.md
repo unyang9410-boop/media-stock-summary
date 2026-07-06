@@ -4,10 +4,10 @@
 
 ## 功能
 
-- Podcast 網址或節目連結：可貼單集頁、RSS enclosure 或直接音檔 URL；系統會解析音訊連結後，用 `requests` 讀取音訊 bytes，透過 `io.BytesIO` 送 OpenAI 音訊轉錄。
+- Podcast 網址或節目連結：可貼 Apple Podcasts 節目/單集頁、Podcast RSS、含音訊播放器的單集頁或直接音檔 URL；系統會解析音訊連結後，用 `requests` 讀取音訊 bytes，透過 `io.BytesIO` 送 OpenAI 音訊轉錄。
 - AI 分析：使用 GPT 模型產生重點摘要、投資觀察、股票清單與八大面向分析。
 - 台股優先：股票名稱與代號辨識以台股為優先，但保留其他明確提及市場。
-- 網址驗證：接受完整 Podcast 網址、節目連結或直接音檔 URL。
+- 網址驗證：接受完整 Podcast 網址、Apple Podcasts 節目/單集頁、RSS、節目連結或直接音檔 URL。
 - 匯出結果：分析完成後可下載 JSON，方便後續存檔或串接其他流程。
 
 ## 安裝
