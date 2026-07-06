@@ -38,6 +38,12 @@ https://你的網站網址/_stcore/health
 4. 在 Environment Variables 加上 `OPENAI_API_KEY`。
 5. 部署完成後，Render 會提供公開網址。
 
+此專案的 `render.yaml` 已設定：
+
+- `buildCommand`: `pip install -r requirements.txt`
+- `startCommand`: 使用 `0.0.0.0` 和 Render 的 `$PORT`
+- `healthCheckPath`: `/_stcore/health`
+
 ## Docker 部署
 
 建置：

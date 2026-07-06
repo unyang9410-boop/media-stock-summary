@@ -4,6 +4,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run app.py --server.address 0.0.0.0 --server.port $PORT --server.headless true --browser.gatherUsageStats false
+    healthCheckPath: /_stcore/health
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -11,4 +12,3 @@ services:
         value: gpt-4o
       - key: OPENAI_TRANSCRIBE_MODEL
         value: whisper-1
-
